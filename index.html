@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>sorry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500;700&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#fdf6ee;
+    --peach:#ffe3d1;
+    --pink:#ffd6e6;
+    --lavender:#e7ddfa;
+    --gold:#f3c98b;
+    --ink:#5b4a55;
+  }
+  *{box-sizing:border-box;}
+  html{ height:100%; }
+  body{
+    margin:0;padding:0;
+    min-height:100%;
+    background:linear-gradient(160deg,var(--cream),var(--peach) 40%, var(--pink) 75%, var(--lavender));
+    overflow-x:hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color:var(--ink);
+    cursor:default;
+  }
+  #stage{
+    position:fixed;
+    inset:0;
+    width:100vw;height:100vh;
+    overflow:hidden;
+    perspective:1400px;
+    z-index:1;
+  }
+  #bg{
+    position:absolute;inset:0;
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.55), transparent 55%),
+      radial-gradient(ellipse at 75% 75%, rgba(255,214,230,0.5), transparent 60%),
+      linear-gradient(160deg,var(--cream),var(--peach) 40%, var(--pink) 75%, var(--lavender));
+    transition:filter 0.6s ease;
+  }
+  .sparkle{
+    position:absolute;
+    width:6px;height:6px;
+    border-radius:50%;
+    background:radial-gradient(circle, #fff, var(--gold) 60%, transparent 70%);
+    opacity:0;
+    will-change:transform,opacity;
+  }
+  #world{
+    position:absolute;
+    inset:0;
+    transform-style:preserve-3d;
+  }
+  .creature{
+    position:absolute;
+    transform-style:preserve-3d;
+    will-change:transform,opacity;
+    user-select:none;
+    -webkit-user-select:none;
+    /* NOTE: no CSS filter here on purpose — drop-shadow on ~300 animating
+       elements is extremely expensive to composite every frame and is what
+       made scrolling feel broken. Each creature bakes its own shadow as a
+       plain SVG ellipse instead (see script.js), which costs nothing extra. */
+  }
+  .creature svg{ display:block; overflow:visible; }
+  .creature.hoverable{ cursor:pointer; }
+  .heart-pop{
+    position:absolute;
+    top:-14px;left:50%;
+    font-size:14px;
+    opacity:0;
+    pointer-events:none;
+    transform:translate(-50%,0) scale(0.6);
+  }
+
+  #center-glow{
+    position:absolute;
+    left:50%;top:50%;
+    width:64vmin;height:64vmin;
+    transform:translate(-50%,-50%) scale(0.3);
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,0.9), rgba(255,236,220,0.5) 45%, transparent 72%);
+    opacity:0;
+    pointer-events:none;
+    filter:blur(2px);
+  }
+
+  #sorryWrap{
+    position:absolute;
+    left:50%;top:50%;
+    transform:translate(-50%,-50%) scale(0.9);
+    pointer-events:none;
+    text-align:center;
+    transition: transform 1.4s cubic-bezier(.2,.9,.25,1.15);
+  }
+  #sorryWrap.settled{ transform:translate(-50%,-50%) scale(1); }
+  @keyframes sorryFloat{
+    0%,100%{ transform:translateY(0); }
+    50%{ transform:translateY(-6px); }
+  }
+  #sorryWrap.settled #sorryText{
+    animation: sorryFloat 5s ease-in-out infinite;
+  }
+  #sorryText{
+    position:relative;
+    font-family:'Dancing Script','Caveat',cursive;
+    font-weight:700;
+    font-size:clamp(48px, 11vw, 130px);
+    line-height:1;
+    white-space:nowrap;
+    margin:0;
+    background:linear-gradient(100deg,#d98fae,#c97a9c 45%,#b98bd6 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    filter:drop-shadow(0 2px 14px rgba(180,120,140,0.4));
+    /* the clip-path is what makes it look "written" left-to-right */
+    clip-path: inset(0 100% 0 0);
+    -webkit-clip-path: inset(0 100% 0 0);
+  }
+  #penTip{
+    position:absolute;
+    top:50%;
+    width:14px;height:14px;
+    border-radius:50%;
+    background:radial-gradient(circle, #fff, var(--gold) 55%, transparent 75%);
+    transform:translate(-50%,-50%);
+    opacity:0;
+    pointer-events:none;
+  }
+
+  #hint{
+    position:fixed;
+    left:50%;bottom:28px;
+    transform:translateX(-50%);
+    font-size:13px;
+    letter-spacing:0.28em;
+    text-transform:uppercase;
+    color:var(--ink);
+    opacity:0.55;
+    animation:pulseHint 2.6s ease-in-out infinite;
+    pointer-events:none;
+    z-index:50;
+  }
+  @keyframes pulseHint{
+    0%,100%{opacity:0.35; transform:translateX(-50%) translateY(0);}
+    50%{opacity:0.75; transform:translateX(-50%) translateY(-6px);}
+  }
+  #hint.hide{opacity:0; transition:opacity 0.8s ease; animation:none;}
+
+  #scrollSpace{ position:relative; height:450vh; width:100%; z-index:0; }
+
+  #cursorGlow{
+    position:fixed;
+    width:26px;height:26px;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,0.9), rgba(255,214,230,0.4) 60%, transparent 75%);
+    pointer-events:none;
+    transform:translate(-50%,-50%);
+    z-index:9999;
+    mix-blend-mode:multiply;
+    opacity:0;
+    transition:opacity 0.3s ease;
+  }
+  @media (hover:hover) and (pointer:fine){
+    #cursorGlow.show{opacity:0.9;}
+  }
+
+  #loading{
+    position:fixed;inset:0;
+    background:var(--cream);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    z-index:10000;
+    transition:opacity 0.7s ease;
+    gap:14px;
+  }
+  #loading .zzz{ font-size:38px; }
+  #loading p{ font-size:13px; letter-spacing:0.1em; color:var(--ink); opacity:0.6; }
+  #loading.gone{ opacity:0; pointer-events:none; }
+
+  @media (max-width: 640px){
+    #hint{ font-size:11px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="zzz">😴</div><p>waking up the cuteness…</p></div>
+
+<div id="cursorGlow"></div>
+
+<div id="stage">
+  <div id="bg"></div>
+  <div id="world"></div>
+  <div id="center-glow"></div>
+  <div id="sorryWrap">
+    <div id="sorryText">Sorryyy......</div>
+    <div id="penTip"></div>
+  </div>
+</div>
+
+<div id="hint">scroll…</div>
+
+<div id="scrollSpace"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
